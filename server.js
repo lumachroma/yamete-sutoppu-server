@@ -1,14 +1,15 @@
-const { createServer } = require('node:http');
+require('dotenv').config();
+const mongoose = require('mongoose');
+const redisClient = require('./config/redis');
+const app = require('./app');
 
-const hostname = '127.0.0.1';
-const port = 3000;
+const PORT = process.env.PORT || 4000;
 
-const server = createServer((req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World');
-});
-
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
+mongoose.connect(process.env.MONGO_URI).then(() => {
+    console.log('MongoDB connected');
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}).catch(err => {
+    console.error('MongoDB connection error:', err);
 });
