@@ -2,6 +2,7 @@ const User = require('../models/User');
 const LoginAttempt = require('../models/LoginAttempt');
 const { sendOtp, hashOtp, verifyHashedOtp } = require('../services/otpService');
 const jwtService = require('../services/jwtService');
+const { blacklistToken, isTokenBlacklisted } = require('../services/tokenBlacklistService');
 const redisClient = require('../config/redis');
 const crypto = require('crypto');
 
@@ -101,6 +102,93 @@ exports.verifyOtp = async (req, res, next) => {
 
         // Only return access token in response body
         return res.status(200).json({ accessToken });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.refreshToken = async (req, res, next) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
+
+        // 1. Verify JWT
+        const payload = jwtService.verifyRefreshToken(refreshToken);
+        if (!payload) return res.status(401).json({ message: 'Invalid refresh token' });
+
+        // 2. Blacklist check
+        if (await isTokenBlacklisted(payload.jti)) {
+            return res.status(401).json({ message: 'Refresh token revoked' });
+        }
+
+        // 3. Find user and verify token in DB
+        const user = await User.findById(payload.sub);
+        if (!user) return res.status(401).json({ message: 'User not found' });
+
+        // Hash the provided refresh token for comparison
+        const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+        const storedToken = user.refreshTokens.find(rt => rt.tokenHash === refreshTokenHash);
+        if (!storedToken) return res.status(401).json({ message: 'Refresh token not recognized' });
+
+        // 4. Token expiry check
+        if (new Date() > storedToken.expiresAt) {
+            return res.status(401).json({ message: 'Refresh token expired' });
+        }
+
+        // 5. Rotate: blacklist old, remove from user, issue new
+        await blacklistToken(payload.jti, Math.max(0, Math.floor((storedToken.expiresAt - Date.now()) / 1000)));
+
+        // Remove old refresh token by hash
+        user.refreshTokens = user.refreshTokens.filter(rt => rt.tokenHash !== refreshTokenHash);
+
+        // Issue new refresh token
+        const newRefreshToken = jwtService.signRefreshToken(user);
+        const newRefreshTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+        const newExpiresAt = new Date(Date.now() + jwtService.REFRESH_EXPIRY * 1000);
+
+        user.refreshTokens.push({ tokenHash: newRefreshTokenHash, expiresAt: newExpiresAt });
+        await user.save();
+
+        // Issue new access token
+        const accessToken = jwtService.signAccessToken(user);
+
+        res.cookie('access_token', accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: jwtService.ACCESS_EXPIRY * 1000
+        });
+
+        return res.status(200).json({
+            accessToken,
+            refreshToken: newRefreshToken
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.logoutEverywhere = async (req, res, next) => {
+    try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Blacklist existing refresh tokens
+        for (const rt of user.refreshTokens) {
+            const payload = jwtService.verifyRefreshToken(rt.token);
+            if (payload) {
+                await blacklistToken(payload.jti, Math.floor((rt.expiresAt - Date.now()) / 1000));
+            }
+        }
+
+        user.refreshTokens = [];
+        await user.save();
+        res.clearCookie('access_token');
+        res.json({ message: 'Logged out everywhere' });
     } catch (err) {
         next(err);
     }
