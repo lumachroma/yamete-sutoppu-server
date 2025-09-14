@@ -30,8 +30,9 @@ exports.loginRequest = async (req, res, next) => {
             return res.status(429).json({ message: 'Too many login attempts, try again later.' });
         }
 
-        // Generate OTP
-        const otp = sendOtp(email || phone, user); // Service handles SMS/Email
+        // Generate and send OTP
+        const method = email ? 'email' : 'phone';
+        const otp = await sendOtp(email || phone, user, method); // Await for async email/SMS sending
         const otpHash = hashOtp(otp);
 
         // Create LoginAttempt

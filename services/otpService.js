@@ -1,15 +1,20 @@
 const crypto = require('crypto');
+const { sendOtpEmail } = require('./emailService');
 
 // Generate random OTP
 function generateOtp() {
     return crypto.randomInt(100000, 1000000).toString();
 }
 
-// Send OTP (stub: integrate email/SMS providers)
-function sendOtp(address, user) {
+// Send OTP (email)
+async function sendOtp(address, user, method) {
     const otp = generateOtp();
-    // Send via SMS or Email (implement SendGrid/Twilio/etc here)
+
     console.log(`Send OTP ${otp} to ${address}`);
+    if (method === 'email') {
+        await sendOtpEmail(address, otp);
+    }
+    // Add SMS sending here if needed
     return otp;
 }
 
