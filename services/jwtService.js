@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 
-if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET environment variable is not set.');
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret || jwtSecret.length < 16) {
+    throw new Error('JWT_SECRET environment variable must be set and at least 16 characters long for security.');
 }
 
 const ACCESS_EXPIRY = 900; // 15 minutes
@@ -10,7 +11,7 @@ const REFRESH_EXPIRY = 7 * 24 * 60 * 60; // 7 days
 function signAccessToken(user) {
     return jwt.sign(
         { sub: user._id, email: user.email, phone: user.phone },
-        process.env.JWT_SECRET,
+        jwtSecret,
         { expiresIn: ACCESS_EXPIRY }
     );
 }

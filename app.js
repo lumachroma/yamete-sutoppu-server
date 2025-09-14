@@ -3,9 +3,11 @@ const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
+require('./config/passport')(passport);
 const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
+const protectedRoutes = require('./routes/protected');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -30,6 +32,7 @@ app.use(passport.initialize());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/protected', protectedRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
