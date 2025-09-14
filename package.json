@@ -1,0 +1,21 @@
+{
+  "name": "yamete-sutoppu-server",
+  "version": "0.0.1",
+  "description": "Seamlessly straightforward SSO OTP Server",
+  "keywords": [
+    "SSO",
+    "OTP",
+    "JWT",
+    "Secure",
+    "Login",
+    "Protection"
+  ],
+  "license": "ISC",
+  "author": "Nazrul Hisham",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
