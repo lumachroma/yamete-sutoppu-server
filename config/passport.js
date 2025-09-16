@@ -16,6 +16,11 @@ module.exports = (passport) => {
             }
             const user = await User.findById(payload.sub);
             if (!user) return done(null, false);
+            // console.log('JWT payload verified:', payload);
+            // console.log('Authenticated user:', user);
+            // Attach iat and exp from payload to user object for identity endpoint
+            user.iat = payload.iat;
+            user.exp = payload.exp;
             return done(null, user);
         } catch (err) {
             return done(err, false);
