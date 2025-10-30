@@ -6,9 +6,7 @@ const passport = require('passport');
 require('./config/passport')(passport);
 const rateLimit = require('express-rate-limit');
 
-const authRoutes = require('./routes/auth');
-const protectedRoutes = require('./routes/protected');
-const userRoutes = require('./routes/users');
+const routes = require('./routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -32,9 +30,7 @@ app.use(rateLimit({
 app.use(passport.initialize());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/protected', protectedRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api', routes);
 
 // Error handling middleware
 app.use(errorHandler);
