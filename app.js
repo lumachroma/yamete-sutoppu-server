@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
+const userRoutes = require('./routes/users');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -18,7 +19,7 @@ app.use(cookieParser());
 app.use(cors({
     origin: process.env.CLIENT_ORIGIN,
     credentials: true,
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
 
 // Rate limit global (defense-in-depth)
@@ -33,6 +34,7 @@ app.use(passport.initialize());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
